@@ -1,0 +1,37 @@
+import { z } from "zod";
+import { TASK_PRIORITIES, TASK_STATUSES } from "./types";
+
+/**
+ * 入力検証スキーマ。API 境界で外部入力を必ず通すことで、
+ * 不正なデータがドメイン／永続化層へ流れ込むのを防ぐ。
+ */
+
+const isoDate = z
+  .string()
+  .datetime({ message: "期限は ISO 8601 形式で指定してください" })
+  .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "期限は YYYY-MM-DD 形式で指定してください"));
+
+export const createTaskSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, "タイトルは必須です")
+    .max(200, "タイトルは 200 文字以内で入力してください"),
+  description: z.string().trim().max(2000, "説明は 2000 文字以内で入力してください").optional(),
+  status: z.enum(TASK_STATUSES).optional(),
+  priority: z.enum(TASK_PRIORITIES).optional(),
+  dueDate: isoDate.nullable().optional(),
+});
+
+export const updateTaskSchema = createTaskSchema.partial().refine(
+  (value) => Object.keys(value).length > 0,
+  { message: "更新する項目を 1 つ以上指定してください" },
+);
+
+export const taskFilterSchema = z.object({
+  status: z.enum(TASK_STATUSES).optional(),
+  search: z.string().trim().max(200).optional(),
+});
+
+export type CreateTaskBody = z.infer<typeof createTaskSchema>;
+export type UpdateTaskBody = z.infer<typeof updateTaskSchema>;

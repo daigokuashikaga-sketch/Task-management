@@ -1,2 +1,104 @@
-# Task-management
-タスク管理
+# Task Management
+
+Next.js（App Router）＋ TypeScript ＋ SQLite で構築した、フルスタックのタスク管理アプリケーションです。
+「動くものを作る」だけでなく、**保守しやすい設計・型安全・テスト容易性**を意識して実装しています。
+
+---
+
+## 主な機能
+
+- タスクの作成・編集・削除（CRUD）
+- ステータス管理（未着手 / 進行中 / 完了）
+- 優先度（高 / 中 / 低）と期限の設定、**期限超過の自動ハイライト**
+- ステータス別のタブ絞り込み
+- タイトル・説明の**インクリメンタル検索**（デバウンス付き）
+- ステータス別の件数サマリー
+- 優先度 → 期限 → 作成日時を考慮した並び替え
+
+## 技術スタック
+
+| 領域 | 採用技術 |
+| --- | --- |
+| フレームワーク | Next.js 14（App Router / Route Handlers） |
+| 言語 | TypeScript（strict モード） |
+| 永続化 | SQLite（better-sqlite3） |
+| 入力検証 | Zod |
+| スタイリング | Tailwind CSS |
+| テスト | Vitest |
+
+## アーキテクチャ
+
+UI・API・永続化を疎結合に保つため、**リポジトリパターンによる依存性逆転**を採用しています。
+アプリ本体は具体的なストレージ実装ではなく `TaskRepository` インターフェースに依存するため、
+ストレージを差し替えても上位レイヤーに影響しません。
+
+```
+app/
+  page.tsx                  画面シェル（Server Component）
+  api/tasks/route.ts        GET 一覧 / POST 作成
+  api/tasks/[id]/route.ts   GET / PATCH / DELETE
+components/                 UI（Client Component）
+  TaskBoard / TaskForm / TaskItem / Filters
+lib/
+  types.ts                  ドメイン型（共通の語彙）
+  validation.ts             Zod による入力検証スキーマ
+  repository.ts             TaskRepository インターフェース＋共通の検索/並び替え
+  sqlite-repository.ts      SQLite 実装（実行時）
+  memory-repository.ts      インメモリ実装（テスト時）
+  db.ts                     リポジトリのシングルトン
+  client.ts                 クライアント側 API ラッパー
+```
+
+### 設計上の意図
+
+- **依存性逆転**: 実行時は SQLite、テスト時はインメモリ実装に差し替え。同一インターフェースを満たすため契約テストがそのまま両方に通用します。
+- **境界での入力検証**: 外部入力は必ず Zod スキーマを通し、不正なデータがドメイン／永続化層へ流れ込むのを防ぎます。
+- **ロジックの一元化**: 検索・並び替えは `applyFilter` に集約し、実装間での挙動のブレを排除。
+- **型の単一情報源**: ステータスや優先度を `as const` 配列から導出し、型・UI ラベル・バリデーションを 1 か所で管理。
+
+## API
+
+| メソッド | パス | 説明 |
+| --- | --- | --- |
+| GET | `/api/tasks?status=&search=` | タスク一覧（絞り込み・検索） |
+| POST | `/api/tasks` | タスク作成 |
+| GET | `/api/tasks/:id` | 単一タスク取得 |
+| PATCH | `/api/tasks/:id` | タスク部分更新 |
+| DELETE | `/api/tasks/:id` | タスク削除 |
+
+不正入力は `400`、対象なしは `404` を返します。
+
+## セットアップ
+
+```bash
+npm install        # 依存関係のインストール（better-sqlite3 のネイティブビルドを含む）
+npm run dev        # 開発サーバー起動（http://localhost:3000）
+```
+
+その他のコマンド:
+
+```bash
+npm run build      # 本番ビルド
+npm run start      # 本番サーバー起動
+npm run typecheck  # 型チェック（tsc --noEmit）
+npm run test       # テスト（Vitest）
+npm run lint       # Lint（next lint）
+```
+
+SQLite のデータベースファイルは既定で `data/tasks.db` に作成されます。
+`DATABASE_PATH` 環境変数で保存先を変更できます。
+
+## テスト
+
+リポジトリの振る舞い（CRUD・絞り込み・検索・並び替え）と、Zod バリデーションを Vitest で検証しています。
+
+```bash
+npm run test
+```
+
+## 今後の拡張余地
+
+- 認証によるユーザーごとのタスク管理
+- ドラッグ＆ドロップによるカンバン UI
+- タグ／プロジェクト単位での分類
+- 楽観的更新による体感速度の向上
