@@ -21,7 +21,7 @@ Next.js（App Router）＋ TypeScript ＋ SQLite で構築した、フルスタ�
 | --- | --- |
 | フレームワーク | Next.js 14（App Router / Route Handlers） |
 | 言語 | TypeScript（strict モード） |
-| 永続化 | SQLite（better-sqlite3） |
+| 永続化 | JSON ファイル（既定・依存ゼロ）／ SQLite（任意・better-sqlite3） |
 | 入力検証 | Zod |
 | スタイリング | Tailwind CSS |
 | テスト | Vitest |
@@ -43,15 +43,16 @@ lib/
   types.ts                  ドメイン型（共通の語彙）
   validation.ts             Zod による入力検証スキーマ
   repository.ts             TaskRepository インターフェース＋共通の検索/並び替え
-  sqlite-repository.ts      SQLite 実装（実行時）
+  json-repository.ts        JSON ファイル実装（既定・依存ゼロ）
+  sqlite-repository.ts      SQLite 実装（任意）
   memory-repository.ts      インメモリ実装（テスト時）
-  db.ts                     リポジトリのシングルトン
+  db.ts                     リポジトリのシングルトン（実装を選択）
   client.ts                 クライアント側 API ラッパー
 ```
 
 ### 設計上の意図
 
-- **依存性逆転**: 実行時は SQLite、テスト時はインメモリ実装に差し替え。同一インターフェースを満たすため契約テストがそのまま両方に通用します。
+- **依存性逆転**: 既定は依存ゼロの JSON ファイル実装、テスト時はインメモリ実装、任意で SQLite 実装に差し替え可能。同一インターフェースを満たすため契約テストがそのまま全実装に通用します。ネイティブビルドなしで `npm install` だけ動くことを優先しています。
 - **境界での入力検証**: 外部入力は必ず Zod スキーマを通し、不正なデータがドメイン／永続化層へ流れ込むのを防ぎます。
 - **ロジックの一元化**: 検索・並び替えは `applyFilter` に集約し、実装間での挙動のブレを排除。
 - **型の単一情報源**: ステータスや優先度を `as const` 配列から導出し、型・UI ラベル・バリデーションを 1 か所で管理。
@@ -71,9 +72,11 @@ lib/
 ## セットアップ
 
 ```bash
-npm install        # 依存関係のインストール（better-sqlite3 のネイティブビルドを含む）
+npm install        # 依存関係のインストール（ネイティブビルド不要）
 npm run dev        # 開発サーバー起動（http://localhost:3000）
 ```
+
+> Node.js 18 以上が必要です。既定の永続化は JSON ファイルなので、コンパイラや追加ツールは不要です。
 
 その他のコマンド:
 
@@ -85,8 +88,14 @@ npm run test       # テスト（Vitest）
 npm run lint       # Lint（next lint）
 ```
 
-SQLite のデータベースファイルは既定で `data/tasks.db` に作成されます。
-`DATABASE_PATH` 環境変数で保存先を変更できます。
+データは既定で `data/tasks.json` に保存されます。`DATABASE_PATH` で保存先を変更できます。
+
+SQLite を使いたい場合は、better-sqlite3 を導入し `DB_DRIVER=sqlite` を指定します（任意）:
+
+```bash
+npm install better-sqlite3
+DB_DRIVER=sqlite npm run dev   # data/tasks.db に保存
+```
 
 ## テスト
 
