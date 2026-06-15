@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { parseTags } from "@/lib/tags";
 import {
   PRIORITY_LABELS,
   TASK_PRIORITIES,
@@ -16,6 +17,7 @@ export function TaskForm({ onCreate }: TaskFormProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
+  const [tags, setTags] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,11 +36,13 @@ export function TaskForm({ onCreate }: TaskFormProps) {
         title: title.trim(),
         description: description.trim() || undefined,
         priority,
+        tags: parseTags(tags),
         dueDate: dueDate || null,
       });
       setTitle("");
       setDescription("");
       setPriority("medium");
+      setTags("");
       setDueDate("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "作成に失敗しました");
@@ -101,6 +105,14 @@ export function TaskForm({ onCreate }: TaskFormProps) {
             />
           </label>
         </div>
+
+        <input
+          type="text"
+          value={tags}
+          onChange={(e) => setTags(e.target.value)}
+          placeholder="タグ（カンマ区切り。例: 仕事, 重要）"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+        />
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 

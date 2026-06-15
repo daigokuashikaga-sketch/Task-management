@@ -16,8 +16,11 @@ import {
   type UpdateTaskInput,
 } from "@/lib/types";
 import { Filters } from "./Filters";
+import { KanbanBoard } from "./KanbanBoard";
 import { TaskForm } from "./TaskForm";
 import { TaskItem } from "./TaskItem";
+
+type ViewMode = "list" | "board";
 
 export function TaskBoard() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -26,6 +29,8 @@ export function TaskBoard() {
   const [status, setStatus] = useState<TaskStatus | "all">("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [tag, setTag] = useState<string | null>(null);
+  const [view, setView] = useState<ViewMode>("list");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +48,7 @@ export function TaskBoard() {
         fetchTasks({
           status: status === "all" ? undefined : status,
           search: debouncedSearch || undefined,
+          tag: tag ?? undefined,
         }),
         fetchTasks(),
       ]);
@@ -53,7 +59,7 @@ export function TaskBoard() {
     } finally {
       setLoading(false);
     }
-  }, [status, debouncedSearch]);
+  }, [status, debouncedSearch, tag]);
 
   useEffect(() => {
     void load();
@@ -115,12 +121,47 @@ export function TaskBoard() {
       </aside>
 
       <section className="space-y-4">
-        <Filters
-          status={status}
-          search={search}
-          onStatusChange={setStatus}
-          onSearchChange={setSearch}
-        />
+        <div className="flex items-center justify-between gap-3">
+          <Filters
+            status={status}
+            search={search}
+            onStatusChange={setStatus}
+            onSearchChange={setSearch}
+          />
+
+          <div className="flex shrink-0 gap-1 rounded-lg bg-slate-100 p-1">
+            {(["list", "board"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setView(mode)}
+                className={`rounded-md px-3 py-1 text-sm font-medium transition ${
+                  view === mode
+                    ? "bg-surface text-slate-800 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {mode === "list" ? "リスト" : "ボード"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {tag && (
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <span>タグで絞り込み中:</span>
+            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs">
+              #{tag}
+            </span>
+            <button
+              type="button"
+              onClick={() => setTag(null)}
+              className="text-xs text-slate-500 underline hover:text-slate-700"
+            >
+              解除
+            </button>
+          </div>
+        )}
 
         {error && (
           <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -134,6 +175,13 @@ export function TaskBoard() {
           <p className="rounded-xl border border-dashed border-slate-300 py-10 text-center text-sm text-slate-400">
             タスクがありません。左のフォームから追加してください。
           </p>
+        ) : view === "board" ? (
+          <KanbanBoard
+            tasks={tasks}
+            onUpdate={handleUpdate}
+            onDelete={handleDelete}
+            onTagClick={setTag}
+          />
         ) : (
           <ul className="space-y-3">
             {tasks.map((task) => (
@@ -142,6 +190,7 @@ export function TaskBoard() {
                 task={task}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
+                onTagClick={setTag}
               />
             ))}
           </ul>

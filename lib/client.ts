@@ -26,6 +26,7 @@ export async function fetchTasks(filter: TaskFilter = {}): Promise<Task[]> {
   const params = new URLSearchParams();
   if (filter.status) params.set("status", filter.status);
   if (filter.search) params.set("search", filter.search);
+  if (filter.tag) params.set("tag", filter.tag);
   const query = params.toString();
   const res = await fetch(`/api/tasks${query ? `?${query}` : ""}`, {
     cache: "no-store",

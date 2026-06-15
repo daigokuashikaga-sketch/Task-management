@@ -44,6 +44,10 @@ export function applyFilter(tasks: Task[], filter?: TaskFilter): Task[] {
     );
   }
 
+  if (filter?.tag) {
+    result = result.filter((task) => task.tags.includes(filter.tag as string));
+  }
+
   return [...result].sort((a, b) => {
     const byPriority = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
     if (byPriority !== 0) return byPriority;

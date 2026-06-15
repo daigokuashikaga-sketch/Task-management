@@ -30,6 +30,7 @@ export class InMemoryTaskRepository implements TaskRepository {
       description: input.description ?? "",
       status: input.status ?? "todo",
       priority: input.priority ?? "medium",
+      tags: input.tags ?? [],
       dueDate: input.dueDate ?? null,
       createdAt: now,
       updatedAt: now,
@@ -46,6 +47,7 @@ export class InMemoryTaskRepository implements TaskRepository {
       ...existing,
       ...patch,
       description: patch.description ?? existing.description,
+      tags: patch.tags ?? existing.tags,
       dueDate: patch.dueDate === undefined ? existing.dueDate : patch.dueDate,
       updatedAt: new Date().toISOString(),
     };

@@ -5,17 +5,45 @@
 Next.js（App Router）＋ TypeScript で構築した、フルスタックのタスク管理アプリケーションです。
 「動くものを作る」だけでなく、**保守しやすい設計・型安全・テスト容易性**を意識して実装しています。
 
+> **ライブデモ**: Vercel にワンクリックでデプロイできます（下記「デモ / デプロイ」参照）。
+
 ---
 
 ## 主な機能
 
 - タスクの作成・**インライン編集**・削除（CRUD）
 - ステータス管理（未着手 / 進行中 / 完了）
+- **ドラッグ＆ドロップのカンバンボード**（カードを列へドラッグして状態変更）と**リスト／ボードの表示切替**
+- **タグ付け**と、タグをクリックしての絞り込み
 - 優先度（高 / 中 / 低）と期限の設定、**期限超過の自動ハイライト**
 - ステータス別のタブ絞り込み
 - タイトル・説明の**インクリメンタル検索**（デバウンス付き）
 - ステータス別の件数サマリー
 - 優先度 → 期限 → 作成日時を考慮した並び替え
+
+## デモ / デプロイ
+
+サーバーレス（Vercel）では、ファイル書き込みができないため**自動でインメモリ＋サンプルデータ**に切り替わり、追加設定なしで動作します（ローカルでは JSON ファイルに永続化）。
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/daigokuashikaga-sketch/Task-management)
+
+上のボタン、または以下の CLI でデプロイできます。
+
+```bash
+npm i -g vercel
+vercel        # プレビューデプロイ
+vercel --prod # 本番デプロイ
+```
+
+## スクリーンショット
+
+ローカル起動後、同梱の Playwright スクリプトで撮影できます（`docs/screenshots/` に出力）。
+
+```bash
+DB_DRIVER=memory npm run dev          # 別ターミナルでサンプルデータ入り起動
+npm i -D playwright && npx playwright install chromium
+node scripts/screenshot.mjs
+```
 
 ## 技術スタック
 
@@ -40,15 +68,18 @@ app/
   api/tasks/route.ts        GET 一覧 / POST 作成
   api/tasks/[id]/route.ts   GET / PATCH / DELETE
 components/                 UI（Client Component）
-  TaskBoard / TaskForm / TaskItem / Filters
+  TaskBoard                 一覧/ボードの統括・状態管理
+  KanbanBoard               ドラッグ＆ドロップのカンバン
+  TaskForm / TaskItem / Filters
 lib/
   types.ts                  ドメイン型（共通の語彙）
   validation.ts             Zod による入力検証スキーマ
+  tags.ts                   タグ入力のパース/整形
   repository.ts             TaskRepository インターフェース＋共通の検索/並び替え
   json-repository.ts        JSON ファイル実装（既定・依存ゼロ）
   sqlite-repository.ts      SQLite 実装（任意）
-  memory-repository.ts      インメモリ実装（テスト時）
-  db.ts                     リポジトリのシングルトン（実装を選択）
+  memory-repository.ts      インメモリ実装（テスト・デモ）
+  db.ts                     リポジトリのシングルトン（環境に応じて実装を選択）
   client.ts                 クライアント側 API ラッパー
 ```
 
@@ -63,7 +94,7 @@ lib/
 
 | メソッド | パス | 説明 |
 | --- | --- | --- |
-| GET | `/api/tasks?status=&search=` | タスク一覧（絞り込み・検索） |
+| GET | `/api/tasks?status=&search=&tag=` | タスク一覧（絞り込み・検索・タグ） |
 | POST | `/api/tasks` | タスク作成 |
 | GET | `/api/tasks/:id` | 単一タスク取得 |
 | PATCH | `/api/tasks/:id` | タスク部分更新 |
@@ -101,10 +132,11 @@ DB_DRIVER=sqlite npm run dev   # data/tasks.db に保存
 
 ## テスト
 
-Vitest で以下を検証しています（計 19 件）。
+Vitest で以下を検証しています（計 25 件）。
 
-- リポジトリの振る舞い（CRUD・絞り込み・検索・並び替え）
+- リポジトリの振る舞い（CRUD・絞り込み・検索・タグ・並び替え）
 - JSON ファイル実装の永続化（再起動後のデータ復元）
+- タグ入力のパース（重複除去・トリム）
 - Zod バリデーション
 - **Route Handler の結合テスト**（API 境界のステータスコード・永続化）
 
@@ -120,6 +152,6 @@ GitHub Actions（`.github/workflows/ci.yml`）で、push / PR ごとに
 ## 今後の拡張余地
 
 - 認証によるユーザーごとのタスク管理
-- ドラッグ＆ドロップによるカンバン UI
-- タグ／プロジェクト単位での分類
+- Vercel KV / Postgres など永続ストアへの差し替え（リポジトリ実装の追加のみで対応可能）
 - 楽観的更新による体感速度の向上
+- 並び替え順のカスタマイズ
