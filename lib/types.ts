@@ -15,6 +15,8 @@ export interface Task {
   description: string;
   status: TaskStatus;
   priority: TaskPriority;
+  /** 任意のタグ（分類用ラベル）。 */
+  tags: string[];
   /** ISO 8601 形式の期限。未設定の場合は null。 */
   dueDate: string | null;
   createdAt: string;
@@ -26,6 +28,7 @@ export interface CreateTaskInput {
   description?: string;
   status?: TaskStatus;
   priority?: TaskPriority;
+  tags?: string[];
   dueDate?: string | null;
 }
 
@@ -35,6 +38,8 @@ export interface TaskFilter {
   status?: TaskStatus;
   /** タイトル・説明に対する部分一致検索。 */
   search?: string;
+  /** 指定タグを含むタスクのみに絞り込む。 */
+  tag?: string;
 }
 
 export const STATUS_LABELS: Record<TaskStatus, string> = {

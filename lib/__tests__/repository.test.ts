@@ -14,7 +14,18 @@ describe("InMemoryTaskRepository", () => {
     expect(task.title).toBe("設計レビュー");
     expect(task.status).toBe("todo");
     expect(task.priority).toBe("medium");
+    expect(task.tags).toEqual([]);
     expect(task.dueDate).toBeNull();
+  });
+
+  it("タグで絞り込める", () => {
+    const repo = new InMemoryTaskRepository();
+    repo.create({ title: "A", tags: ["仕事", "重要"] });
+    repo.create({ title: "B", tags: ["私用"] });
+
+    const work = repo.list({ tag: "仕事" });
+    expect(work).toHaveLength(1);
+    expect(work[0].title).toBe("A");
   });
 
   it("ステータスで絞り込める", () => {

@@ -27,6 +27,12 @@ describe("createTaskSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("タグの重複を除去する", () => {
+    const result = createTaskSchema.safeParse({ title: "x", tags: ["a", "a", "b"] });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.tags).toEqual(["a", "b"]);
+  });
 });
 
 describe("updateTaskSchema", () => {

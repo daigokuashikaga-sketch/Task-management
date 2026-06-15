@@ -20,6 +20,11 @@ export const createTaskSchema = z.object({
   description: z.string().trim().max(2000, "説明は 2000 文字以内で入力してください").optional(),
   status: z.enum(TASK_STATUSES).optional(),
   priority: z.enum(TASK_PRIORITIES).optional(),
+  tags: z
+    .array(z.string().trim().min(1).max(30, "タグは 30 文字以内で入力してください"))
+    .max(10, "タグは 10 個までです")
+    .transform((tags) => [...new Set(tags)])
+    .optional(),
   dueDate: isoDate.nullable().optional(),
 });
 
@@ -31,6 +36,7 @@ export const updateTaskSchema = createTaskSchema.partial().refine(
 export const taskFilterSchema = z.object({
   status: z.enum(TASK_STATUSES).optional(),
   search: z.string().trim().max(200).optional(),
+  tag: z.string().trim().max(30).optional(),
 });
 
 export type CreateTaskBody = z.infer<typeof createTaskSchema>;

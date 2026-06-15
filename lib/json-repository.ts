@@ -28,7 +28,10 @@ export class JsonFileTaskRepository implements TaskRepository {
       const raw = fs.readFileSync(this.filename, "utf-8").trim();
       if (!raw) return;
       const parsed = JSON.parse(raw) as Task[];
-      for (const task of parsed) this.tasks.set(task.id, task);
+      for (const task of parsed) {
+        // 旧フォーマット（tags 無し）との後方互換。
+        this.tasks.set(task.id, { ...task, tags: task.tags ?? [] });
+      }
     } catch {
       // 壊れたファイルでも起動を止めない（空の状態から開始）。
     }
@@ -55,6 +58,7 @@ export class JsonFileTaskRepository implements TaskRepository {
       description: input.description ?? "",
       status: input.status ?? "todo",
       priority: input.priority ?? "medium",
+      tags: input.tags ?? [],
       dueDate: input.dueDate ?? null,
       createdAt: now,
       updatedAt: now,
@@ -72,6 +76,7 @@ export class JsonFileTaskRepository implements TaskRepository {
       ...existing,
       ...patch,
       description: patch.description ?? existing.description,
+      tags: patch.tags ?? existing.tags,
       dueDate: patch.dueDate === undefined ? existing.dueDate : patch.dueDate,
       updatedAt: new Date().toISOString(),
     };

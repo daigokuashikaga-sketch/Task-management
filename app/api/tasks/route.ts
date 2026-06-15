@@ -10,6 +10,7 @@ export async function GET(request: Request) {
   const parsed = taskFilterSchema.safeParse({
     status: searchParams.get("status") ?? undefined,
     search: searchParams.get("search") ?? undefined,
+    tag: searchParams.get("tag") ?? undefined,
   });
 
   if (!parsed.success) {

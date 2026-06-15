@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatTags, parseTags } from "@/lib/tags";
 import {
   PRIORITY_LABELS,
   STATUS_LABELS,
@@ -16,6 +17,7 @@ interface TaskItemProps {
   task: Task;
   onUpdate: (id: string, patch: UpdateTaskInput) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onTagClick?: (tag: string) => void;
 }
 
 const PRIORITY_STYLES: Record<Task["priority"], string> = {
@@ -35,7 +37,7 @@ function isOverdue(task: Task): boolean {
   return Date.parse(task.dueDate) < Date.now();
 }
 
-export function TaskItem({ task, onUpdate, onDelete }: TaskItemProps) {
+export function TaskItem({ task, onUpdate, onDelete, onTagClick }: TaskItemProps) {
   const [editing, setEditing] = useState(false);
 
   if (editing) {
@@ -68,6 +70,20 @@ export function TaskItem({ task, onUpdate, onDelete }: TaskItemProps) {
             <p className="mt-1 whitespace-pre-wrap text-sm text-slate-500">
               {task.description}
             </p>
+          )}
+          {task.tags.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {task.tags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => onTagClick?.(tag)}
+                  className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 transition hover:bg-slate-200"
+                >
+                  #{tag}
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
@@ -134,6 +150,7 @@ function TaskEditor({ task, onSave, onCancel }: TaskEditorProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
+  const [tags, setTags] = useState(formatTags(task.tags));
   const [dueDate, setDueDate] = useState(task.dueDate?.slice(0, 10) ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +167,7 @@ function TaskEditor({ task, onSave, onCancel }: TaskEditorProps) {
         title: title.trim(),
         description: description.trim(),
         priority,
+        tags: parseTags(tags),
         dueDate: dueDate || null,
       });
     } catch (err) {
@@ -202,6 +220,15 @@ function TaskEditor({ task, onSave, onCancel }: TaskEditorProps) {
           />
         </label>
       </div>
+
+      <input
+        type="text"
+        value={tags}
+        onChange={(e) => setTags(e.target.value)}
+        placeholder="タグ（カンマ区切り）"
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+        aria-label="タグ"
+      />
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
