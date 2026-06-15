@@ -1,13 +1,15 @@
 # Task Management
 
-Next.js（App Router）＋ TypeScript ＋ SQLite で構築した、フルスタックのタスク管理アプリケーションです。
+![CI](https://github.com/daigokuashikaga-sketch/Task-management/actions/workflows/ci.yml/badge.svg)
+
+Next.js（App Router）＋ TypeScript で構築した、フルスタックのタスク管理アプリケーションです。
 「動くものを作る」だけでなく、**保守しやすい設計・型安全・テスト容易性**を意識して実装しています。
 
 ---
 
 ## 主な機能
 
-- タスクの作成・編集・削除（CRUD）
+- タスクの作成・**インライン編集**・削除（CRUD）
 - ステータス管理（未着手 / 進行中 / 完了）
 - 優先度（高 / 中 / 低）と期限の設定、**期限超過の自動ハイライト**
 - ステータス別のタブ絞り込み
@@ -99,11 +101,21 @@ DB_DRIVER=sqlite npm run dev   # data/tasks.db に保存
 
 ## テスト
 
-リポジトリの振る舞い（CRUD・絞り込み・検索・並び替え）と、Zod バリデーションを Vitest で検証しています。
+Vitest で以下を検証しています（計 19 件）。
+
+- リポジトリの振る舞い（CRUD・絞り込み・検索・並び替え）
+- JSON ファイル実装の永続化（再起動後のデータ復元）
+- Zod バリデーション
+- **Route Handler の結合テスト**（API 境界のステータスコード・永続化）
 
 ```bash
 npm run test
 ```
+
+## CI
+
+GitHub Actions（`.github/workflows/ci.yml`）で、push / PR ごとに
+**型チェック → Lint → テスト → ビルド**を自動実行しています。
 
 ## 今後の拡張余地
 
