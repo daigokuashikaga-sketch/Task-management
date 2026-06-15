@@ -21,6 +21,8 @@ import { TaskItem } from "./TaskItem";
 
 export function TaskBoard() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  // サマリーは絞り込みに関わらず常に全件を反映するため別管理する。
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [status, setStatus] = useState<TaskStatus | "all">("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -37,11 +39,15 @@ export function TaskBoard() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchTasks({
-        status: status === "all" ? undefined : status,
-        search: debouncedSearch || undefined,
-      });
-      setTasks(data);
+      const [filtered, all] = await Promise.all([
+        fetchTasks({
+          status: status === "all" ? undefined : status,
+          search: debouncedSearch || undefined,
+        }),
+        fetchTasks(),
+      ]);
+      setTasks(filtered);
+      setAllTasks(all);
     } catch (err) {
       setError(err instanceof Error ? err.message : "読み込みに失敗しました");
     } finally {
@@ -84,9 +90,9 @@ export function TaskBoard() {
       in_progress: 0,
       done: 0,
     };
-    for (const task of tasks) base[task.status] += 1;
+    for (const task of allTasks) base[task.status] += 1;
     return base;
-  }, [tasks]);
+  }, [allTasks]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
