@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import {
   PRIORITY_LABELS,
   STATUS_LABELS,
+  TASK_PRIORITIES,
   TASK_STATUSES,
   type Task,
+  type TaskPriority,
   type TaskStatus,
   type UpdateTaskInput,
 } from "@/lib/types";
@@ -33,6 +36,21 @@ function isOverdue(task: Task): boolean {
 }
 
 export function TaskItem({ task, onUpdate, onDelete }: TaskItemProps) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <TaskEditor
+        task={task}
+        onCancel={() => setEditing(false)}
+        onSave={async (patch) => {
+          await onUpdate(task.id, patch);
+          setEditing(false);
+        }}
+      />
+    );
+  }
+
   const overdue = isOverdue(task);
 
   return (
@@ -85,12 +103,124 @@ export function TaskItem({ task, onUpdate, onDelete }: TaskItemProps) {
           </select>
         </label>
 
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="rounded px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-100"
+          >
+            編集
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(task.id)}
+            className="rounded px-2 py-1 text-xs text-red-600 transition hover:bg-red-50"
+          >
+            削除
+          </button>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+interface TaskEditorProps {
+  task: Task;
+  onSave: (patch: UpdateTaskInput) => Promise<void>;
+  onCancel: () => void;
+}
+
+function TaskEditor({ task, onSave, onCancel }: TaskEditorProps) {
+  const [title, setTitle] = useState(task.title);
+  const [description, setDescription] = useState(task.description);
+  const [priority, setPriority] = useState<TaskPriority>(task.priority);
+  const [dueDate, setDueDate] = useState(task.dueDate?.slice(0, 10) ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave() {
+    if (!title.trim()) {
+      setError("タイトルを入力してください");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave({
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        dueDate: dueDate || null,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "保存に失敗しました");
+      setSaving(false);
+    }
+  }
+
+  return (
+    <li className="space-y-3 rounded-xl border border-slate-300 bg-surface p-4 shadow-sm">
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+        maxLength={200}
+        aria-label="タイトル"
+      />
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        rows={2}
+        placeholder="説明（任意）"
+        className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+        maxLength={2000}
+        aria-label="説明"
+      />
+      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+        <label className="flex items-center gap-2">
+          優先度
+          <select
+            value={priority}
+            onChange={(e) => setPriority(e.target.value as TaskPriority)}
+            className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+          >
+            {TASK_PRIORITIES.map((p) => (
+              <option key={p} value={p}>
+                {PRIORITY_LABELS[p]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2">
+          期限
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+          />
+        </label>
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <div className="flex gap-2">
         <button
           type="button"
-          onClick={() => onDelete(task.id)}
-          className="ml-auto rounded px-2 py-1 text-xs text-red-600 transition hover:bg-red-50"
+          onClick={handleSave}
+          disabled={saving}
+          className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
         >
-          削除
+          {saving ? "保存中…" : "保存"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+        >
+          キャンセル
         </button>
       </div>
     </li>
