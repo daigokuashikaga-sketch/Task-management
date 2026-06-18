@@ -6,7 +6,7 @@ export default function HomePage() {
       <header className="mb-8">
         <h1 className="text-2xl font-bold text-slate-800">タスク管理</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Next.js（App Router）＋ TypeScript ＋ SQLite で構築したフルスタックのタスク管理アプリ
+          Next.js（App Router）＋ TypeScript で構築したフルスタックのタスク管理アプリ
         </p>
       </header>
 

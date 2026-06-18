@@ -8,14 +8,18 @@ import type {
 /**
  * 永続化の抽象。アプリ本体は具体的なストレージ実装ではなく
  * このインターフェースに依存する（依存性逆転）。
- * 実行時は SQLite 実装、テスト時はインメモリ実装に差し替えられる。
+ * 実行時は Postgres 実装、テスト時はインメモリ実装に差し替えられる。
+ *
+ * すべての操作は所有ユーザー（userId）でスコープされる。
+ * userId を必須引数にすることで、テナント越境アクセスを型レベルで防ぐ。
+ * Promise を返すのは、サーバーレス Postgres など非同期ドライバを許容するため。
  */
 export interface TaskRepository {
-  list(filter?: TaskFilter): Task[];
-  get(id: string): Task | null;
-  create(input: CreateTaskInput): Task;
-  update(id: string, patch: UpdateTaskInput): Task | null;
-  delete(id: string): boolean;
+  list(userId: string, filter?: TaskFilter): Promise<Task[]>;
+  get(userId: string, id: string): Promise<Task | null>;
+  create(userId: string, input: CreateTaskInput): Promise<Task>;
+  update(userId: string, id: string, patch: UpdateTaskInput): Promise<Task | null>;
+  delete(userId: string, id: string): Promise<boolean>;
 }
 
 /**

@@ -9,23 +9,30 @@ import type {
 
 /**
  * インメモリ実装。永続化を伴わないためユニットテストに最適。
- * SQLite 実装と同じ TaskRepository を満たすので、テストで安全に差し替えられる。
+ * Postgres 実装と同じ TaskRepository を満たすので、テストで安全に差し替えられる。
+ *
+ * すべての操作は userId でスコープし、他テナントのタスクには一切触れない。
  */
 export class InMemoryTaskRepository implements TaskRepository {
   private tasks = new Map<string, Task>();
 
-  list(filter?: TaskFilter): Task[] {
-    return applyFilter([...this.tasks.values()], filter);
+  async list(userId: string, filter?: TaskFilter): Promise<Task[]> {
+    const owned = [...this.tasks.values()].filter(
+      (task) => task.ownerId === userId,
+    );
+    return applyFilter(owned, filter);
   }
 
-  get(id: string): Task | null {
-    return this.tasks.get(id) ?? null;
+  async get(userId: string, id: string): Promise<Task | null> {
+    const task = this.tasks.get(id);
+    return task && task.ownerId === userId ? task : null;
   }
 
-  create(input: CreateTaskInput): Task {
+  async create(userId: string, input: CreateTaskInput): Promise<Task> {
     const now = new Date().toISOString();
     const task: Task = {
       id: randomUUID(),
+      ownerId: userId,
       title: input.title,
       description: input.description ?? "",
       status: input.status ?? "todo",
@@ -39,9 +46,13 @@ export class InMemoryTaskRepository implements TaskRepository {
     return task;
   }
 
-  update(id: string, patch: UpdateTaskInput): Task | null {
+  async update(
+    userId: string,
+    id: string,
+    patch: UpdateTaskInput,
+  ): Promise<Task | null> {
     const existing = this.tasks.get(id);
-    if (!existing) return null;
+    if (!existing || existing.ownerId !== userId) return null;
 
     const updated: Task = {
       ...existing,
@@ -55,7 +66,9 @@ export class InMemoryTaskRepository implements TaskRepository {
     return updated;
   }
 
-  delete(id: string): boolean {
+  async delete(userId: string, id: string): Promise<boolean> {
+    const existing = this.tasks.get(id);
+    if (!existing || existing.ownerId !== userId) return false;
     return this.tasks.delete(id);
   }
 }

@@ -1,5 +1,5 @@
-import { createRequire } from "node:module";
 import path from "node:path";
+import { DEMO_USER_ID } from "./auth";
 import { JsonFileTaskRepository } from "./json-repository";
 import { InMemoryTaskRepository } from "./memory-repository";
 import type { TaskRepository } from "./repository";
@@ -7,17 +7,21 @@ import type { TaskRepository } from "./repository";
 /**
  * リポジトリのシングルトン。
  * Next.js の開発時 HMR で接続が増殖しないよう globalThis にキャッシュする。
+ * 初期化（シード投入など）は非同期になり得るため Promise をキャッシュし、
+ * 並行リクエストでも初期化が一度だけ走るようにする。
  *
  * ドライバの選択:
  * - 既定（ローカル）       : JSON ファイル（依存ゼロで永続化）
  * - Vercel などサーバーレス : インメモリ（ファイル書き込み不可のため）＋デモ用シード
- * - DB_DRIVER で明示指定可  : json / memory / sqlite
+ * - DB_DRIVER で明示指定可  : json / memory
+ *
+ * 本番向けの Postgres ドライバは Phase 2 で追加する。
  */
 const globalForRepo = globalThis as unknown as {
-  taskRepository?: TaskRepository;
+  taskRepositoryPromise?: Promise<TaskRepository>;
 };
 
-type Driver = "json" | "memory" | "sqlite";
+type Driver = "json" | "memory";
 
 function resolveDriver(): Driver {
   if (process.env.DB_DRIVER) return process.env.DB_DRIVER as Driver;
@@ -32,9 +36,9 @@ function resolveDataPath(fallbackFile: string): string {
 }
 
 /** デモ環境（インメモリ）でも画面が空にならないようサンプルを投入する。 */
-function seed(repo: TaskRepository): TaskRepository {
-  if (repo.list().length > 0) return repo;
-  repo.create({
+async function seed(repo: TaskRepository): Promise<TaskRepository> {
+  if ((await repo.list(DEMO_USER_ID)).length > 0) return repo;
+  await repo.create(DEMO_USER_ID, {
     title: "採用面談の準備をする",
     description: "ポートフォリオと想定質問をまとめる",
     status: "in_progress",
@@ -42,13 +46,13 @@ function seed(repo: TaskRepository): TaskRepository {
     tags: ["仕事", "重要"],
     dueDate: "2026-06-20",
   });
-  repo.create({
+  await repo.create(DEMO_USER_ID, {
     title: "README を仕上げる",
     status: "todo",
     priority: "medium",
     tags: ["ドキュメント"],
   });
-  repo.create({
+  await repo.create(DEMO_USER_ID, {
     title: "テストを追加する",
     status: "done",
     priority: "low",
@@ -57,16 +61,8 @@ function seed(repo: TaskRepository): TaskRepository {
   return repo;
 }
 
-function createRepository(): TaskRepository {
+async function initRepository(): Promise<TaskRepository> {
   const driver = resolveDriver();
-
-  if (driver === "sqlite") {
-    // 任意実装。better-sqlite3（ネイティブモジュール）を導入済みのときだけ読み込む。
-    const require = createRequire(import.meta.url);
-    const { SqliteTaskRepository } =
-      require("./sqlite-repository") as typeof import("./sqlite-repository");
-    return new SqliteTaskRepository(resolveDataPath("tasks.db"));
-  }
 
   if (driver === "memory") {
     return seed(new InMemoryTaskRepository());
@@ -75,9 +71,9 @@ function createRepository(): TaskRepository {
   return new JsonFileTaskRepository(resolveDataPath("tasks.json"));
 }
 
-export function getTaskRepository(): TaskRepository {
-  if (!globalForRepo.taskRepository) {
-    globalForRepo.taskRepository = createRepository();
+export function getTaskRepository(): Promise<TaskRepository> {
+  if (!globalForRepo.taskRepositoryPromise) {
+    globalForRepo.taskRepositoryPromise = initRepository();
   }
-  return globalForRepo.taskRepository;
+  return globalForRepo.taskRepositoryPromise;
 }

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { DEMO_USER_ID } from "./auth";
 import { applyFilter, type TaskRepository } from "./repository";
 import type {
   CreateTaskInput,
@@ -11,8 +12,10 @@ import type {
 
 /**
  * JSON ファイルによる永続化実装。
- * ネイティブ依存が一切ないため、どの OS でも `npm install` だけで動く（既定の実装）。
+ * ネイティブ依存が一切ないため、どの OS でも `npm install` だけで動く（ローカル開発の既定）。
  * データはメモリ上に保持し、変更のたびにファイルへ書き出す。
+ *
+ * すべての操作は userId でスコープし、他テナントのタスクには一切触れない。
  */
 export class JsonFileTaskRepository implements TaskRepository {
   private tasks = new Map<string, Task>();
@@ -29,8 +32,12 @@ export class JsonFileTaskRepository implements TaskRepository {
       if (!raw) return;
       const parsed = JSON.parse(raw) as Task[];
       for (const task of parsed) {
-        // 旧フォーマット（tags 無し）との後方互換。
-        this.tasks.set(task.id, { ...task, tags: task.tags ?? [] });
+        // 旧フォーマット（tags / ownerId 無し）との後方互換。
+        this.tasks.set(task.id, {
+          ...task,
+          tags: task.tags ?? [],
+          ownerId: task.ownerId ?? DEMO_USER_ID,
+        });
       }
     } catch {
       // 壊れたファイルでも起動を止めない（空の状態から開始）。
@@ -42,18 +49,23 @@ export class JsonFileTaskRepository implements TaskRepository {
     fs.writeFileSync(this.filename, data, "utf-8");
   }
 
-  list(filter?: TaskFilter): Task[] {
-    return applyFilter([...this.tasks.values()], filter);
+  async list(userId: string, filter?: TaskFilter): Promise<Task[]> {
+    const owned = [...this.tasks.values()].filter(
+      (task) => task.ownerId === userId,
+    );
+    return applyFilter(owned, filter);
   }
 
-  get(id: string): Task | null {
-    return this.tasks.get(id) ?? null;
+  async get(userId: string, id: string): Promise<Task | null> {
+    const task = this.tasks.get(id);
+    return task && task.ownerId === userId ? task : null;
   }
 
-  create(input: CreateTaskInput): Task {
+  async create(userId: string, input: CreateTaskInput): Promise<Task> {
     const now = new Date().toISOString();
     const task: Task = {
       id: randomUUID(),
+      ownerId: userId,
       title: input.title,
       description: input.description ?? "",
       status: input.status ?? "todo",
@@ -68,9 +80,13 @@ export class JsonFileTaskRepository implements TaskRepository {
     return task;
   }
 
-  update(id: string, patch: UpdateTaskInput): Task | null {
+  async update(
+    userId: string,
+    id: string,
+    patch: UpdateTaskInput,
+  ): Promise<Task | null> {
     const existing = this.tasks.get(id);
-    if (!existing) return null;
+    if (!existing || existing.ownerId !== userId) return null;
 
     const updated: Task = {
       ...existing,
@@ -85,7 +101,9 @@ export class JsonFileTaskRepository implements TaskRepository {
     return updated;
   }
 
-  delete(id: string): boolean {
+  async delete(userId: string, id: string): Promise<boolean> {
+    const existing = this.tasks.get(id);
+    if (!existing || existing.ownerId !== userId) return false;
     const deleted = this.tasks.delete(id);
     if (deleted) this.persist();
     return deleted;

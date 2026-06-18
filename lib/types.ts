@@ -11,6 +11,11 @@ export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
 export interface Task {
   id: string;
+  /**
+   * 所有ユーザーの ID。マルチテナント分離の基準。
+   * 認証済みセッションからサーバーが付与し、クライアント入力では受け取らない。
+   */
+  ownerId: string;
   title: string;
   description: string;
   status: TaskStatus;
