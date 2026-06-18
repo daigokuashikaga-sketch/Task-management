@@ -36,6 +36,8 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Docker などへポータブルに配布するための自己完結ビルド。
+  output: "standalone",
   // postgres.js は接続文字列に応じて動的 require を行うため、
   // サーバーバンドルから外して実行時に解決させる。
   experimental: {
