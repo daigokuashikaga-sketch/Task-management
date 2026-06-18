@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "claude/**"]
   pull_request:
     branches: [main]
 
@@ -35,3 +35,8 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # 既知の Next.js アドバイザリ（Next 16 への移行が必要）が残るため、
+      # 可視化目的で実行し CI はブロックしない。対応方針は SECURITY.md 参照。
+      - name: Audit (non-blocking)
+        run: npm audit --audit-level=high || true

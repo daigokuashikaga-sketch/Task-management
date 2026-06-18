@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # npm 依存の脆弱性・更新を週次で追従
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      # パッチ・マイナーはまとめて 1 PR に集約しノイズを抑える
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions のバージョンも追従
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
