@@ -6,6 +6,7 @@ import { InMemoryTaskRepository } from "./memory-repository";
 import { InMemoryUserRepository } from "./memory-user-repository";
 import {
   createPostgresDatabase,
+  pingDatabase,
   PostgresTaskRepository,
   PostgresUserRepository,
   type Database,
@@ -123,4 +124,22 @@ export function getUserRepository(): UserRepository {
     globalForRepo.userRepository = createUserRepository();
   }
   return globalForRepo.userRepository;
+}
+
+/**
+ * 永続化層の疎通確認（ヘルスチェック用）。
+ * postgres は `select 1`、json/memory はリポジトリ初期化が成功すれば疎通とみなす。
+ * 失敗時は例外を投げる。
+ */
+export async function checkDatabase(): Promise<void> {
+  if (resolveDriver() === "postgres") {
+    await pingDatabase(getPostgresDatabase());
+    return;
+  }
+  await getTaskRepository();
+}
+
+/** 現在の永続化ドライバ名（ヘルス応答などの可視化用）。 */
+export function activeDriver(): Driver {
+  return resolveDriver();
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { applyFilter, type TaskRepository } from "./repository";
@@ -30,6 +30,11 @@ export type Database = PostgresJsDatabase<typeof schema>;
 export function createPostgresDatabase(connectionString: string): Database {
   const client = postgres(connectionString, { max: 1 });
   return drizzle(client, { schema });
+}
+
+/** 接続疎通の確認（ヘルスチェック用）。失敗時は例外を投げる。 */
+export async function pingDatabase(db: Database): Promise<void> {
+  await db.execute(sql`select 1`);
 }
 
 function isUniqueViolation(error: unknown): boolean {

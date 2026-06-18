@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUserRepository } from "@/lib/db";
+import { HttpError, readJson, withRoute } from "@/lib/http";
 import { hashPassword } from "@/lib/password";
 import { RateLimiter, clientIp } from "@/lib/rate-limit";
 import { DuplicateEmailError, toPublicUser } from "@/lib/user-repository";
@@ -15,7 +16,7 @@ const limiter = new RateLimiter(
 );
 
 /** POST /api/auth/register — メール＋パスワードでの新規ユーザー登録 */
-export async function POST(request: Request) {
+export const POST = withRoute(async (request, _ctx, { log }) => {
   const verdict = limiter.check(clientIp(request));
   if (!verdict.allowed) {
     return NextResponse.json(
@@ -31,13 +32,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "JSON を解析できません" }, { status: 400 });
-  }
-
+  const body = await readJson(request);
   const parsed = registerSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -54,11 +49,13 @@ export async function POST(request: Request) {
       name: parsed.data.name ?? null,
       passwordHash,
     });
+    log.info("user.registered", { userId: user.id });
     return NextResponse.json({ user: toPublicUser(user) }, { status: 201 });
   } catch (error) {
     if (error instanceof DuplicateEmailError) {
-      return NextResponse.json({ error: error.message }, { status: 409 });
+      // 想定済みの競合は 409 として返す（500 にしない）。
+      throw new HttpError(409, error.message);
     }
     throw error;
   }
-}
+});
