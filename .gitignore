@@ -30,3 +30,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts.timestamp
+
+# test artifacts
+/coverage
+/playwright-report
+/test-results
+/.playwright
