@@ -39,5 +39,21 @@ export const taskFilterSchema = z.object({
   tag: z.string().trim().max(30).optional(),
 });
 
+/** ユーザー登録の入力検証。 */
+export const registerSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, "メールアドレスは必須です")
+    .email("メールアドレスの形式が正しくありません")
+    .max(254, "メールアドレスが長すぎます"),
+  password: z
+    .string()
+    .min(8, "パスワードは 8 文字以上で入力してください")
+    .max(128, "パスワードは 128 文字以内で入力してください"),
+  name: z.string().trim().max(80, "名前は 80 文字以内で入力してください").optional(),
+});
+
 export type CreateTaskBody = z.infer<typeof createTaskSchema>;
 export type UpdateTaskBody = z.infer<typeof updateTaskSchema>;
+export type RegisterBody = z.infer<typeof registerSchema>;

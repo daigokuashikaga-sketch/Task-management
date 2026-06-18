@@ -9,6 +9,9 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      # CI 専用のダミー値。本番デプロイでは各環境の秘密として固有値を設定する。
+      AUTH_SECRET: ci-placeholder-secret-not-for-production
     steps:
       - uses: actions/checkout@v4
 

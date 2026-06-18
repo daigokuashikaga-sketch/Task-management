@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { DEMO_USER_ID } from "./auth";
+import { DEMO_USER_ID } from "./auth/constants";
 import { applyFilter, type TaskRepository } from "./repository";
 import type {
   CreateTaskInput,

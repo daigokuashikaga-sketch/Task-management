@@ -3,11 +3,22 @@ import { requireUserId } from "@/lib/auth";
 import { getTaskRepository } from "@/lib/db";
 import { createTaskSchema, taskFilterSchema } from "@/lib/validation";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function unauthorized() {
+  return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+}
 
 /** GET /api/tasks?status=&search=&tag= — ログインユーザーのタスク一覧 */
 export async function GET(request: Request) {
-  const userId = await requireUserId();
+  let userId: string;
+  try {
+    userId = await requireUserId();
+  } catch {
+    return unauthorized();
+  }
+
   const { searchParams } = new URL(request.url);
   const parsed = taskFilterSchema.safeParse({
     status: searchParams.get("status") ?? undefined,
@@ -29,7 +40,12 @@ export async function GET(request: Request) {
 
 /** POST /api/tasks — タスクの新規作成 */
 export async function POST(request: Request) {
-  const userId = await requireUserId();
+  let userId: string;
+  try {
+    userId = await requireUserId();
+  } catch {
+    return unauthorized();
+  }
 
   let body: unknown;
   try {

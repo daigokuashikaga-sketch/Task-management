@@ -3,15 +3,26 @@ import { requireUserId } from "@/lib/auth";
 import { getTaskRepository } from "@/lib/db";
 import { updateTaskSchema } from "@/lib/validation";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RouteContext {
   params: { id: string };
 }
 
+function unauthorized() {
+  return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+}
+
 /** GET /api/tasks/:id — 単一タスクの取得（所有者のみ） */
 export async function GET(_request: Request, { params }: RouteContext) {
-  const userId = await requireUserId();
+  let userId: string;
+  try {
+    userId = await requireUserId();
+  } catch {
+    return unauthorized();
+  }
+
   const repo = await getTaskRepository();
   const task = await repo.get(userId, params.id);
   if (!task) {
@@ -22,7 +33,12 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
 /** PATCH /api/tasks/:id — タスクの部分更新（所有者のみ） */
 export async function PATCH(request: Request, { params }: RouteContext) {
-  const userId = await requireUserId();
+  let userId: string;
+  try {
+    userId = await requireUserId();
+  } catch {
+    return unauthorized();
+  }
 
   let body: unknown;
   try {
@@ -49,7 +65,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
 /** DELETE /api/tasks/:id — タスクの削除（所有者のみ） */
 export async function DELETE(_request: Request, { params }: RouteContext) {
-  const userId = await requireUserId();
+  let userId: string;
+  try {
+    userId = await requireUserId();
+  } catch {
+    return unauthorized();
+  }
+
   const repo = await getTaskRepository();
   const deleted = await repo.delete(userId, params.id);
   if (!deleted) {

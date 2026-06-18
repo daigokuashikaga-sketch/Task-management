@@ -1,7 +1,12 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+// 認証は別テストで検証する。ここでは固定ユーザーに解決して API 境界に集中する。
+vi.mock("@/lib/auth", () => ({
+  requireUserId: vi.fn(async () => "test-user"),
+}));
 
 /**
  * Route Handler の結合テスト。

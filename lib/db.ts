@@ -1,8 +1,11 @@
 import path from "node:path";
-import { DEMO_USER_ID } from "./auth";
+import { DEMO_USER_ID } from "./auth/constants";
 import { JsonFileTaskRepository } from "./json-repository";
+import { JsonFileUserRepository } from "./json-user-repository";
 import { InMemoryTaskRepository } from "./memory-repository";
+import { InMemoryUserRepository } from "./memory-user-repository";
 import type { TaskRepository } from "./repository";
+import type { UserRepository } from "./user-repository";
 
 /**
  * リポジトリのシングルトン。
@@ -19,6 +22,7 @@ import type { TaskRepository } from "./repository";
  */
 const globalForRepo = globalThis as unknown as {
   taskRepositoryPromise?: Promise<TaskRepository>;
+  userRepository?: UserRepository;
 };
 
 type Driver = "json" | "memory";
@@ -76,4 +80,18 @@ export function getTaskRepository(): Promise<TaskRepository> {
     globalForRepo.taskRepositoryPromise = initRepository();
   }
   return globalForRepo.taskRepositoryPromise;
+}
+
+function createUserRepository(): UserRepository {
+  if (resolveDriver() === "memory") {
+    return new InMemoryUserRepository();
+  }
+  return new JsonFileUserRepository(resolveDataPath("users.json"));
+}
+
+export function getUserRepository(): UserRepository {
+  if (!globalForRepo.userRepository) {
+    globalForRepo.userRepository = createUserRepository();
+  }
+  return globalForRepo.userRepository;
 }
